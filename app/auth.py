@@ -10,13 +10,23 @@ from app.database import get_db
 from app.config import get_settings
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Изменяем настройки CryptContext
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # Добавляем rounds
+)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
+    # Ограничиваем длину пароля до 72 символов
+    if len(password) > 72:
+        password = password[:72]
     return pwd_context.hash(password)
 
 def authenticate_user(db: Session, username: str, password: str):
