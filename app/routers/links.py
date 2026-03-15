@@ -233,15 +233,47 @@ async def search_by_original_url(
     original_url: str,
     db: Session = Depends(get_db)
 ):
-    """Поиск ссылок по оригинальному URL (регистронезависимый)"""
+    """
+    Поиск ссылок по оригинальному URL
+    - Ищет по частичному совпадению (без учета регистра)
+    - Возвращает пустой список [], если ничего не найдено (НЕ 404!)
+    - Ограничение: максимум 20 результатов
+    """
+    print(f"🔍 Поиск: '{original_url}'")  # Для отладки
     
-    # Используем ilike для регистронезависимого поиска
-    links = db.query(models.Link).filter(
-        models.Link.original_url.ilike(f"%{original_url}%")
-    ).limit(20).all()
-    
-    # Возвращаем пустой массив, если ничего не найдено
-    return links
+    try:
+        # Самый простой и надежный способ поиска
+        # Приводим всё к нижнему регистру для регистронезависимости
+        search_term = f"%{original_url.lower()}%"
+        
+        # Выполняем поиск
+        links = db.query(
+            models.Link.short_code,
+            models.Link.original_url,
+            models.Link.created_at,
+            models.Link.clicks
+        ).filter(
+            models.Link.original_url.ilike(search_term)
+        ).limit(20).all()
+        
+        print(f"✅ Найдено результатов: {len(links)}")
+        
+        # ВАЖНО: Всегда возвращаем список, даже пустой
+        result = []
+        for link in links:
+            result.append({
+                "short_code": link.short_code,
+                "original_url": link.original_url,
+                "created_at": link.created_at,
+                "clicks": link.clicks
+            })
+        
+        return result
+        
+    except Exception as e:
+        # Логируем ошибку, но не падаем
+        print(f"❌ Ошибка поиска: {str(e)}")
+        return []  # В случае ошибки возвращаем пустой список
 
 # Дополнительная функция: Удаление неиспользуемых ссылок
 @router.delete("/cleanup/unused", status_code=status.HTTP_200_OK)
