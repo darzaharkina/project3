@@ -233,27 +233,29 @@ async def search_by_original_url(
     original_url: str,
     db: Session = Depends(get_db)
 ):
-    """
-    Поиск ссылок по оригинальному URL
-    """
-    # Убираем сложности - просто получаем все ссылки
-    all_links = db.query(models.Link).all()
+    """Поиск ссылок по оригинальному URL"""
+    # Ищем все ссылки, содержащие подстроку (без учета регистра)
+    links = db.query(
+        models.Link.short_code,
+        models.Link.original_url,
+        models.Link.created_at,
+        models.Link.clicks
+    ).filter(
+        models.Link.original_url.ilike(f"%{original_url}%")
+    ).limit(20).all()
     
-    # Вручную фильтруем по вхождению подстроки (без учета регистра)
-    search_lower = original_url.lower()
-    matched_links = []
+    # Преобразуем в список словарей для ответа
+    result = []
+    for link in links:
+        result.append({
+            "short_code": link.short_code,
+            "original_url": link.original_url,
+            "created_at": link.created_at,
+            "clicks": link.clicks
+        })
     
-    for link in all_links:
-        if search_lower in link.original_url.lower():
-            matched_links.append({
-                "short_code": link.short_code,
-                "original_url": link.original_url,
-                "created_at": link.created_at,
-                "clicks": link.clicks
-            })
-    
-    # Возвращаем максимум 20 результатов
-    return matched_links[:20]
+    # Всегда возвращаем список (пустой, если ничего нет)
+    return result
 
 # Дополнительная функция: Удаление неиспользуемых ссылок
 @router.delete("/cleanup/unused", status_code=status.HTTP_200_OK)
