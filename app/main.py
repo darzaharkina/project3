@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer
+from fastapi.security import OAuth2PasswordRequestForm  # ВАЖНО: импортируем это
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
@@ -91,29 +91,19 @@ async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db))
     logger.info(f"✅ Пользователь зарегистрирован: {user_data.username}")
     return db_user
 
+# ===== ИСПРАВЛЕННЫЙ ЭНДПОИНТ /TOKEN =====
 @app.post("/token", response_model=schemas.Token)
 async def login(
-    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),  # ВАЖНО: используем OAuth2PasswordRequestForm
     db: Session = Depends(get_db)
 ):
     """Вход в систему и получение токена"""
-    # Получаем данные из формы
-    form_data = await request.form()
-    username = form_data.get("username")
-    password = form_data.get("password")
-    
-    if not username or not password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username and password required"
-        )
-    
-    logger.info(f"Попытка входа: {username}")
+    logger.info(f"Попытка входа: {form_data.username}")
     
     # Аутентификация
-    user = auth.authenticate_user(db, username, password)
+    user = auth.authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        logger.warning(f"Неудачная попытка входа: {username}")
+        logger.warning(f"Неудачная попытка входа: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -123,16 +113,20 @@ async def login(
     # Создание токена
     access_token = auth.create_access_token(data={"sub": user.username})
     
-    logger.info(f"✅ Успешный вход: {username}")
+    logger.info(f"✅ Успешный вход: {form_data.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=schemas.UserResponse)
-async def read_users_me(current_user: models.User = Depends(auth.get_current_active_user)):
+async def read_users_me(
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
     """Информация о текущем пользователе"""
     return current_user
 
 # Альтернативный эндпоинт для тестирования авторизации
 @app.get("/test-auth")
-async def test_auth(current_user: models.User = Depends(auth.get_current_user)):
+async def test_auth(
+    current_user: models.User = Depends(auth.get_current_user)
+):
     """Тестовый эндпоинт для проверки авторизации"""
     return {"message": f"Hello {current_user.username}, you are authenticated!"}
