@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm  # ВАЖНО: импортируем это
+from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
@@ -16,13 +16,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Создание таблиц
-logger.info("=" * 50)
-logger.info("СОЗДАНИЕ ТАБЛИЦ В БАЗЕ ДАННЫХ...")
 try:
     models.Base.metadata.create_all(bind=engine)
-    logger.info("✅ ТАБЛИЦЫ УСПЕШНО СОЗДАНЫ!")
+    logger.info("Таблицы созданы")
 except Exception as e:
-    logger.error(f"❌ ОШИБКА СОЗДАНИЯ ТАБЛИЦ: {e}")
+    logger.error(f"Ошибка создания таблиц: {e}")
 logger.info("=" * 50)
 
 @asynccontextmanager
@@ -88,13 +86,12 @@ async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(db_user)
     
-    logger.info(f"✅ Пользователь зарегистрирован: {user_data.username}")
+    logger.info(f"Пользователь зарегистрирован: {user_data.username}")
     return db_user
 
-# ===== ИСПРАВЛЕННЫЙ ЭНДПОИНТ /TOKEN =====
 @app.post("/token", response_model=schemas.Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),  # ВАЖНО: используем OAuth2PasswordRequestForm
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     """Вход в систему и получение токена"""
@@ -113,7 +110,7 @@ async def login(
     # Создание токена
     access_token = auth.create_access_token(data={"sub": user.username})
     
-    logger.info(f"✅ Успешный вход: {form_data.username}")
+    logger.info(f"Успешный вход: {form_data.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=schemas.UserResponse)
