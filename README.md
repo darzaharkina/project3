@@ -50,3 +50,14 @@ Content-Type: application/json
     "username": "testuser",
     "password": "password123"
 }
+
+### Деплой на Render
+1. **Создать аккаунт** на [render.com](https://render.com)
+2. **Создать новый Web Service** и подключить GitHub репозиторий
+3. **Выбрать окружение** `Docker`
+4. **Добавить переменные окружения:**
+   - `DATABASE_URL` (получить после создания PostgreSQL)
+   - `SECRET_KEY` (сгенерировать случайную строку)
+   - `BASE_URL` (URL вашего сервиса)
+5. **Создать PostgreSQL базу данных** в том же регионе
+6. **Нажать "Create Web Service"**
