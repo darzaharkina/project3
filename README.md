@@ -49,7 +49,7 @@ Content-Type: application/json
     "email": "user@example.com",
     "username": "testuser",
     "password": "password123"
-}'''
+}```
 
 ### Деплой на Render
 1. **Создать аккаунт** на [render.com](https://render.com)
