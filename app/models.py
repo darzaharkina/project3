@@ -33,7 +33,6 @@ class Link(Base):
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     owner = relationship("User", back_populates="links")
     
-    # Индексы для быстрого поиска
     __table_args__ = (
         Index('idx_original_url', original_url),
         Index('idx_expires_at', expires_at),
