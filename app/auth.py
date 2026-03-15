@@ -10,8 +10,6 @@ from app.config import get_settings
 import bcrypt
 
 settings = get_settings()
-
-# Используем HTTPBearer вместо OAuth2PasswordBearer
 security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -78,7 +76,6 @@ async def get_current_active_user(current_user: models.User = Depends(get_curren
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Опциональный текущий пользователь (может быть None)
 async def get_optional_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
