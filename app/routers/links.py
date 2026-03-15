@@ -235,45 +235,25 @@ async def search_by_original_url(
 ):
     """
     Поиск ссылок по оригинальному URL
-    - Ищет по частичному совпадению (без учета регистра)
-    - Возвращает пустой список [], если ничего не найдено (НЕ 404!)
-    - Ограничение: максимум 20 результатов
     """
-    print(f"🔍 Поиск: '{original_url}'")  # Для отладки
+    # Убираем сложности - просто получаем все ссылки
+    all_links = db.query(models.Link).all()
     
-    try:
-        # Самый простой и надежный способ поиска
-        # Приводим всё к нижнему регистру для регистронезависимости
-        search_term = f"%{original_url.lower()}%"
-        
-        # Выполняем поиск
-        links = db.query(
-            models.Link.short_code,
-            models.Link.original_url,
-            models.Link.created_at,
-            models.Link.clicks
-        ).filter(
-            models.Link.original_url.ilike(search_term)
-        ).limit(20).all()
-        
-        print(f"✅ Найдено результатов: {len(links)}")
-        
-        # ВАЖНО: Всегда возвращаем список, даже пустой
-        result = []
-        for link in links:
-            result.append({
+    # Вручную фильтруем по вхождению подстроки (без учета регистра)
+    search_lower = original_url.lower()
+    matched_links = []
+    
+    for link in all_links:
+        if search_lower in link.original_url.lower():
+            matched_links.append({
                 "short_code": link.short_code,
                 "original_url": link.original_url,
                 "created_at": link.created_at,
                 "clicks": link.clicks
             })
-        
-        return result
-        
-    except Exception as e:
-        # Логируем ошибку, но не падаем
-        print(f"❌ Ошибка поиска: {str(e)}")
-        return []  # В случае ошибки возвращаем пустой список
+    
+    # Возвращаем максимум 20 результатов
+    return matched_links[:20]
 
 # Дополнительная функция: Удаление неиспользуемых ссылок
 @router.delete("/cleanup/unused", status_code=status.HTTP_200_OK)
