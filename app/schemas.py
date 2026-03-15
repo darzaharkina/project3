@@ -8,11 +8,17 @@ class LinkBase(BaseModel):
     custom_alias: Optional[str] = Field(None, min_length=3, max_length=50)
     expires_at: Optional[datetime] = None
 
+    class Config:
+        orm_mode = True
+
 class LinkCreate(LinkBase):
     pass
 
 class LinkUpdate(BaseModel):
     original_url: HttpUrl
+
+    class Config:
+        orm_mode = True
 
 class LinkResponse(BaseModel):
     short_code: str
@@ -23,7 +29,7 @@ class LinkResponse(BaseModel):
     is_active: bool
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class LinkStats(BaseModel):
     original_url: str
@@ -35,7 +41,7 @@ class LinkStats(BaseModel):
     owner_username: Optional[str]
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class LinkSearchResponse(BaseModel):
     short_code: str
@@ -44,7 +50,7 @@ class LinkSearchResponse(BaseModel):
     clicks: int
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # User schemas
 class UserBase(BaseModel):
@@ -59,7 +65,7 @@ class UserResponse(UserBase):
     created_at: datetime
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class Token(BaseModel):
     access_token: str
