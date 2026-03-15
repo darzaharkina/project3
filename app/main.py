@@ -1,27 +1,35 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-from datetime import timedelta
+from fastapi.security import HTTPBearer
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
+import logging
 
 from app import models, schemas, auth
 from app.database import engine, get_db
 from app.routers import links
 from app.config import get_settings
-from app.redis_client import redis_client
 
-# Создание таблиц БД
-models.Base.metadata.create_all(bind=engine)
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Создание таблиц
+logger.info("=" * 50)
+logger.info("СОЗДАНИЕ ТАБЛИЦ В БАЗЕ ДАННЫХ...")
+try:
+    models.Base.metadata.create_all(bind=engine)
+    logger.info("✅ ТАБЛИЦЫ УСПЕШНО СОЗДАНЫ!")
+except Exception as e:
+    logger.error(f"❌ ОШИБКА СОЗДАНИЯ ТАБЛИЦ: {e}")
+logger.info("=" * 50)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    print("Starting up...")
+    logger.info("Starting up...")
     yield
-    # Shutdown
-    print("Shutting down...")
-    redis_client.close()
+    logger.info("Shutting down...")
 
 app = FastAPI(
     title="URL Shortener API",
@@ -53,14 +61,16 @@ async def root():
 @app.post("/register", response_model=schemas.UserResponse)
 async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     """Регистрация нового пользователя"""
+    logger.info(f"Попытка регистрации: {user_data.username}")
     
-    # Проверка существования пользователя
+    # Проверка существующего пользователя
     existing_user = db.query(models.User).filter(
         (models.User.username == user_data.username) | 
         (models.User.email == user_data.email)
     ).first()
     
     if existing_user:
+        logger.warning(f"Пользователь уже существует: {user_data.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username or email already registered"
@@ -78,28 +88,51 @@ async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(db_user)
     
+    logger.info(f"✅ Пользователь зарегистрирован: {user_data.username}")
     return db_user
 
 @app.post("/token", response_model=schemas.Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Получение токена доступа"""
+async def login(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Вход в систему и получение токена"""
+    # Получаем данные из формы
+    form_data = await request.form()
+    username = form_data.get("username")
+    password = form_data.get("password")
     
-    user = auth.authenticate_user(db, form_data.username, form_data.password)
+    if not username or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username and password required"
+        )
+    
+    logger.info(f"Попытка входа: {username}")
+    
+    # Аутентификация
+    user = auth.authenticate_user(db, username, password)
     if not user:
+        logger.warning(f"Неудачная попытка входа: {username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token_expires = timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    # Создание токена
+    access_token = auth.create_access_token(data={"sub": user.username})
     
+    logger.info(f"✅ Успешный вход: {username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=schemas.UserResponse)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_active_user)):
-    """Получение информации о текущем пользователе"""
+    """Информация о текущем пользователе"""
     return current_user
+
+# Альтернативный эндпоинт для тестирования авторизации
+@app.get("/test-auth")
+async def test_auth(current_user: models.User = Depends(auth.get_current_user)):
+    """Тестовый эндпоинт для проверки авторизации"""
+    return {"message": f"Hello {current_user.username}, you are authenticated!"}
