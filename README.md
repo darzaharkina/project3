@@ -59,7 +59,9 @@ curl -X POST https://project3-e9y2.onrender.com/register \
     "email": "user@example.com",
     "username": "testuser",
     "password": "password123"
-  }'```
+  }'
+```
+
 Ответ:
 
 json
