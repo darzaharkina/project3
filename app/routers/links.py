@@ -233,12 +233,14 @@ async def search_by_original_url(
     original_url: str,
     db: Session = Depends(get_db)
 ):
-    """Поиск ссылок по оригинальному URL"""
+    """Поиск ссылок по оригинальному URL (регистронезависимый)"""
     
+    # Используем ilike для регистронезависимого поиска
     links = db.query(models.Link).filter(
-        models.Link.original_url.contains(original_url)
+        models.Link.original_url.ilike(f"%{original_url}%")
     ).limit(20).all()
     
+    # Возвращаем пустой массив, если ничего не найдено
     return links
 
 # Дополнительная функция: Удаление неиспользуемых ссылок
